@@ -1,0 +1,1 @@
+select table.col1, table.col2, a from (select table.col1, table.col2, a from student where c=3 and d='hi') where a=1 and b=null;
