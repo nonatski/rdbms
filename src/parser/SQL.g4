@@ -1,5 +1,9 @@
 grammar SQL;
 
+options { 
+  caseInsensitive = true;
+}
+
 // parser rules
 sql_statement: (select_statement | delete_statement | insert_statement) SEMICOLON EOF;
 
@@ -39,7 +43,7 @@ NULL: 'null';
 DOT: '.';
 OPENPAR: '(';
 CLOSEPAR: ')';
-WORD: [a-zA-Z_]+[0-9]*;
+WORD: [a-z_]+[0-9]*;
 
 NUMBER: [0-9]+;
 STRING: '\'' .*? '\'';
