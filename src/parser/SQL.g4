@@ -5,7 +5,7 @@ options {
 }
 
 // parser rules
-sql_statement: (select_statement | delete_statement | insert_statement) SEMICOLON EOF;
+sql_statement: (select_statement | delete_statement | insert_statement) (SEMICOLON (select_statement | delete_statement | insert_statement)+)* SEMICOLON EOF;
 
 select_statement: SELECT column_list (FROM (table | OPENPAR select_statement CLOSEPAR)+ where_clause?)?;
 delete_statement: DELETE FROM table where_clause?;
