@@ -1,0 +1,2 @@
+DELETE FROM table;
+DELETE FROM table where id=1 AND ic='a' AND ib='4' OR ia=null;
