@@ -7,10 +7,11 @@ options {
 // parser rules
 sql_statement: (select_statement | delete_statement | insert_statement) (SEMICOLON (select_statement | delete_statement | insert_statement)+)* SEMICOLON EOF;
 
-select_statement: SELECT column_list (FROM (table | OPENPAR select_statement CLOSEPAR)+ where_clause?)?;
-delete_statement: DELETE FROM table where_clause?;
-insert_statement: INSERT INTO table insert_column_list? VALUES values_list;
+select_statement: SELECT column_list (FROM (table_list | OPENPAR select_statement CLOSEPAR)+ where_clause?)?;
+delete_statement: DELETE FROM table_list where_clause?;
+insert_statement: INSERT INTO table_list insert_column_list? VALUES values_list;
 
+table_list: WORD+ (',' WORD+)*;
 column_list: '*' | column (',' column)*;
 values_list: '('value (',' value)*')';
 insert_column_list: '('column (',' column)*')';
@@ -21,7 +22,6 @@ condition: expression | expression+ ((AND | OR) expression)+;
 expression: column operator value;
 
 column: (WORD | TCNAME) (',' (WORD | TCNAME))*;
-table: WORD+ (',' WORD+)*;
 value: STRING | NUMBER | NULL;
 
 operator: '=' | '<>' | '<' | '>' | '<=' | '>=';
