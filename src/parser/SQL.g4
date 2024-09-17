@@ -16,12 +16,12 @@ column_list: '*' | column (',' column)*;
 values_list: '('value (',' value)*')';
 insert_column_list: '('column (',' column)*')';
 
-where_clause: WHERE condition;
-condition: expression | expression+ ((AND | OR) expression)+;
+where_clause: WHERE condition_list;
+condition_list: expression | expression+ ((AND | OR) expression)+;
 
 expression: column operator value;
 
-column: (WORD | TCNAME) (',' (WORD | TCNAME))*;
+column: (WORD | STRING | TCNAME | NUMBER) (',' (WORD | STRING | TCNAME | NUMBER))*;
 value: STRING | NUMBER | NULL;
 
 operator: '=' | '<>' | '<' | '>' | '<=' | '>=';

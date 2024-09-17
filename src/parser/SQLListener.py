@@ -89,12 +89,12 @@ class SQLListener(ParseTreeListener):
         pass
 
 
-    # Enter a parse tree produced by SQLParser#condition.
-    def enterCondition(self, ctx:SQLParser.ConditionContext):
+    # Enter a parse tree produced by SQLParser#condition_list.
+    def enterCondition_list(self, ctx:SQLParser.Condition_listContext):
         pass
 
-    # Exit a parse tree produced by SQLParser#condition.
-    def exitCondition(self, ctx:SQLParser.ConditionContext):
+    # Exit a parse tree produced by SQLParser#condition_list.
+    def exitCondition_list(self, ctx:SQLParser.Condition_listContext):
         pass
 
 

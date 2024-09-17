@@ -24,13 +24,13 @@ public class SQLParser extends Parser {
 		RULE_sql_statement = 0, RULE_select_statement = 1, RULE_delete_statement = 2, 
 		RULE_insert_statement = 3, RULE_table_list = 4, RULE_column_list = 5, 
 		RULE_values_list = 6, RULE_insert_column_list = 7, RULE_where_clause = 8, 
-		RULE_condition = 9, RULE_expression = 10, RULE_column = 11, RULE_value = 12, 
+		RULE_condition_list = 9, RULE_expression = 10, RULE_column = 11, RULE_value = 12, 
 		RULE_operator = 13;
 	private static String[] makeRuleNames() {
 		return new String[] {
 			"sql_statement", "select_statement", "delete_statement", "insert_statement", 
 			"table_list", "column_list", "values_list", "insert_column_list", "where_clause", 
-			"condition", "expression", "column", "value", "operator"
+			"condition_list", "expression", "column", "value", "operator"
 		};
 	}
 	public static final String[] ruleNames = makeRuleNames();
@@ -574,6 +574,8 @@ public class SQLParser extends Parser {
 				break;
 			case TCNAME:
 			case WORD:
+			case NUMBER:
+			case STRING:
 				enterOuterAlt(_localctx, 2);
 				{
 				setState(98);
@@ -730,8 +732,8 @@ public class SQLParser extends Parser {
 	@SuppressWarnings("CheckReturnValue")
 	public static class Where_clauseContext extends ParserRuleContext {
 		public TerminalNode WHERE() { return getToken(SQLParser.WHERE, 0); }
-		public ConditionContext condition() {
-			return getRuleContext(ConditionContext.class,0);
+		public Condition_listContext condition_list() {
+			return getRuleContext(Condition_listContext.class,0);
 		}
 		public Where_clauseContext(ParserRuleContext parent, int invokingState) {
 			super(parent, invokingState);
@@ -748,7 +750,7 @@ public class SQLParser extends Parser {
 			setState(130);
 			match(WHERE);
 			setState(131);
-			condition();
+			condition_list();
 			}
 		}
 		catch (RecognitionException re) {
@@ -763,7 +765,7 @@ public class SQLParser extends Parser {
 	}
 
 	@SuppressWarnings("CheckReturnValue")
-	public static class ConditionContext extends ParserRuleContext {
+	public static class Condition_listContext extends ParserRuleContext {
 		public List<ExpressionContext> expression() {
 			return getRuleContexts(ExpressionContext.class);
 		}
@@ -778,15 +780,15 @@ public class SQLParser extends Parser {
 		public TerminalNode OR(int i) {
 			return getToken(SQLParser.OR, i);
 		}
-		public ConditionContext(ParserRuleContext parent, int invokingState) {
+		public Condition_listContext(ParserRuleContext parent, int invokingState) {
 			super(parent, invokingState);
 		}
-		@Override public int getRuleIndex() { return RULE_condition; }
+		@Override public int getRuleIndex() { return RULE_condition_list; }
 	}
 
-	public final ConditionContext condition() throws RecognitionException {
-		ConditionContext _localctx = new ConditionContext(_ctx, getState());
-		enterRule(_localctx, 18, RULE_condition);
+	public final Condition_listContext condition_list() throws RecognitionException {
+		Condition_listContext _localctx = new Condition_listContext(_ctx, getState());
+		enterRule(_localctx, 18, RULE_condition_list);
 		int _la;
 		try {
 			setState(145);
@@ -815,7 +817,7 @@ public class SQLParser extends Parser {
 					setState(137); 
 					_errHandler.sync(this);
 					_la = _input.LA(1);
-				} while ( _la==TCNAME || _la==WORD );
+				} while ( (((_la) & ~0x3f) == 0 && ((1L << _la) & 117441024L) != 0) );
 				setState(141); 
 				_errHandler.sync(this);
 				_la = _input.LA(1);
@@ -903,9 +905,17 @@ public class SQLParser extends Parser {
 		public TerminalNode WORD(int i) {
 			return getToken(SQLParser.WORD, i);
 		}
+		public List<TerminalNode> STRING() { return getTokens(SQLParser.STRING); }
+		public TerminalNode STRING(int i) {
+			return getToken(SQLParser.STRING, i);
+		}
 		public List<TerminalNode> TCNAME() { return getTokens(SQLParser.TCNAME); }
 		public TerminalNode TCNAME(int i) {
 			return getToken(SQLParser.TCNAME, i);
+		}
+		public List<TerminalNode> NUMBER() { return getTokens(SQLParser.NUMBER); }
+		public TerminalNode NUMBER(int i) {
+			return getToken(SQLParser.NUMBER, i);
 		}
 		public ColumnContext(ParserRuleContext parent, int invokingState) {
 			super(parent, invokingState);
@@ -923,7 +933,7 @@ public class SQLParser extends Parser {
 			{
 			setState(151);
 			_la = _input.LA(1);
-			if ( !(_la==TCNAME || _la==WORD) ) {
+			if ( !((((_la) & ~0x3f) == 0 && ((1L << _la) & 117441024L) != 0)) ) {
 			_errHandler.recoverInline(this);
 			}
 			else {
@@ -942,7 +952,7 @@ public class SQLParser extends Parser {
 					match(T__0);
 					setState(153);
 					_la = _input.LA(1);
-					if ( !(_la==TCNAME || _la==WORD) ) {
+					if ( !((((_la) & ~0x3f) == 0 && ((1L << _la) & 117441024L) != 0)) ) {
 					_errHandler.recoverInline(this);
 					}
 					else {
@@ -1076,7 +1086,7 @@ public class SQLParser extends Parser {
 		"\u0001\u000b\u0005\u000b\u009b\b\u000b\n\u000b\f\u000b\u009e\t\u000b\u0001"+
 		"\f\u0001\f\u0001\r\u0001\r\u0001\r\u0000\u0000\u000e\u0000\u0002\u0004"+
 		"\u0006\b\n\f\u000e\u0010\u0012\u0014\u0016\u0018\u001a\u0000\u0004\u0001"+
-		"\u0000\r\u000e\u0002\u0000\t\t\u0018\u0018\u0002\u0000\u0014\u0014\u0019"+
+		"\u0000\r\u000e\u0002\u0000\t\t\u0018\u001a\u0002\u0000\u0014\u0014\u0019"+
 		"\u001a\u0001\u0000\u0003\b\u00ac\u0000\u001f\u0001\u0000\u0000\u0000\u0002"+
 		"1\u0001\u0000\u0000\u0000\u0004B\u0001\u0000\u0000\u0000\u0006H\u0001"+
 		"\u0000\u0000\u0000\bR\u0001\u0000\u0000\u0000\nj\u0001\u0000\u0000\u0000"+

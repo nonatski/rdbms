@@ -1,3 +1,6 @@
+SELECT 'a';
+SELECT 1;
+SELECT 1, 'a';
 SELECT a, b;
 SELECT * from a;
 SELECT * from a, b;

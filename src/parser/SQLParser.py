@@ -23,7 +23,7 @@ def serializedATN():
         8,1,9,1,9,4,9,136,8,9,11,9,12,9,137,1,9,1,9,4,9,142,8,9,11,9,12,
         9,143,3,9,146,8,9,1,10,1,10,1,10,1,10,1,11,1,11,1,11,5,11,155,8,
         11,10,11,12,11,158,9,11,1,12,1,12,1,13,1,13,1,13,0,0,14,0,2,4,6,
-        8,10,12,14,16,18,20,22,24,26,0,4,1,0,13,14,2,0,9,9,24,24,2,0,20,
+        8,10,12,14,16,18,20,22,24,26,0,4,1,0,13,14,2,0,9,9,24,26,2,0,20,
         20,25,26,1,0,3,8,172,0,31,1,0,0,0,2,49,1,0,0,0,4,66,1,0,0,0,6,72,
         1,0,0,0,8,82,1,0,0,0,10,106,1,0,0,0,12,108,1,0,0,0,14,119,1,0,0,
         0,16,130,1,0,0,0,18,145,1,0,0,0,20,147,1,0,0,0,22,151,1,0,0,0,24,
@@ -99,7 +99,7 @@ class SQLParser ( Parser ):
     RULE_values_list = 6
     RULE_insert_column_list = 7
     RULE_where_clause = 8
-    RULE_condition = 9
+    RULE_condition_list = 9
     RULE_expression = 10
     RULE_column = 11
     RULE_value = 12
@@ -107,8 +107,8 @@ class SQLParser ( Parser ):
 
     ruleNames =  [ "sql_statement", "select_statement", "delete_statement", 
                    "insert_statement", "table_list", "column_list", "values_list", 
-                   "insert_column_list", "where_clause", "condition", "expression", 
-                   "column", "value", "operator" ]
+                   "insert_column_list", "where_clause", "condition_list", 
+                   "expression", "column", "value", "operator" ]
 
     EOF = Token.EOF
     T__0=1
@@ -665,7 +665,7 @@ class SQLParser ( Parser ):
                 self.state = 97
                 self.match(SQLParser.T__1)
                 pass
-            elif token in [9, 24]:
+            elif token in [9, 24, 25, 26]:
                 self.enterOuterAlt(localctx, 2)
                 self.state = 98
                 self.column()
@@ -840,8 +840,8 @@ class SQLParser ( Parser ):
         def WHERE(self):
             return self.getToken(SQLParser.WHERE, 0)
 
-        def condition(self):
-            return self.getTypedRuleContext(SQLParser.ConditionContext,0)
+        def condition_list(self):
+            return self.getTypedRuleContext(SQLParser.Condition_listContext,0)
 
 
         def getRuleIndex(self):
@@ -867,7 +867,7 @@ class SQLParser ( Parser ):
             self.state = 130
             self.match(SQLParser.WHERE)
             self.state = 131
-            self.condition()
+            self.condition_list()
         except RecognitionException as re:
             localctx.exception = re
             self._errHandler.reportError(self, re)
@@ -877,7 +877,7 @@ class SQLParser ( Parser ):
         return localctx
 
 
-    class ConditionContext(ParserRuleContext):
+    class Condition_listContext(ParserRuleContext):
         __slots__ = 'parser'
 
         def __init__(self, parser, parent:ParserRuleContext=None, invokingState:int=-1):
@@ -904,23 +904,23 @@ class SQLParser ( Parser ):
                 return self.getToken(SQLParser.OR, i)
 
         def getRuleIndex(self):
-            return SQLParser.RULE_condition
+            return SQLParser.RULE_condition_list
 
         def enterRule(self, listener:ParseTreeListener):
-            if hasattr( listener, "enterCondition" ):
-                listener.enterCondition(self)
+            if hasattr( listener, "enterCondition_list" ):
+                listener.enterCondition_list(self)
 
         def exitRule(self, listener:ParseTreeListener):
-            if hasattr( listener, "exitCondition" ):
-                listener.exitCondition(self)
+            if hasattr( listener, "exitCondition_list" ):
+                listener.exitCondition_list(self)
 
 
 
 
-    def condition(self):
+    def condition_list(self):
 
-        localctx = SQLParser.ConditionContext(self, self._ctx, self.state)
-        self.enterRule(localctx, 18, self.RULE_condition)
+        localctx = SQLParser.Condition_listContext(self, self._ctx, self.state)
+        self.enterRule(localctx, 18, self.RULE_condition_list)
         self._la = 0 # Token type
         try:
             self.state = 145
@@ -943,7 +943,7 @@ class SQLParser ( Parser ):
                     self.state = 137 
                     self._errHandler.sync(self)
                     _la = self._input.LA(1)
-                    if not (_la==9 or _la==24):
+                    if not ((((_la) & ~0x3f) == 0 and ((1 << _la) & 117441024) != 0)):
                         break
 
                 self.state = 141 
@@ -1044,11 +1044,23 @@ class SQLParser ( Parser ):
             else:
                 return self.getToken(SQLParser.WORD, i)
 
+        def STRING(self, i:int=None):
+            if i is None:
+                return self.getTokens(SQLParser.STRING)
+            else:
+                return self.getToken(SQLParser.STRING, i)
+
         def TCNAME(self, i:int=None):
             if i is None:
                 return self.getTokens(SQLParser.TCNAME)
             else:
                 return self.getToken(SQLParser.TCNAME, i)
+
+        def NUMBER(self, i:int=None):
+            if i is None:
+                return self.getTokens(SQLParser.NUMBER)
+            else:
+                return self.getToken(SQLParser.NUMBER, i)
 
         def getRuleIndex(self):
             return SQLParser.RULE_column
@@ -1073,7 +1085,7 @@ class SQLParser ( Parser ):
             self.enterOuterAlt(localctx, 1)
             self.state = 151
             _la = self._input.LA(1)
-            if not(_la==9 or _la==24):
+            if not((((_la) & ~0x3f) == 0 and ((1 << _la) & 117441024) != 0)):
                 self._errHandler.recoverInline(self)
             else:
                 self._errHandler.reportMatch(self)
@@ -1087,7 +1099,7 @@ class SQLParser ( Parser ):
                     self.match(SQLParser.T__0)
                     self.state = 153
                     _la = self._input.LA(1)
-                    if not(_la==9 or _la==24):
+                    if not((((_la) & ~0x3f) == 0 and ((1 << _la) & 117441024) != 0)):
                         self._errHandler.recoverInline(self)
                     else:
                         self._errHandler.reportMatch(self)
