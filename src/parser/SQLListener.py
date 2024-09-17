@@ -1,4 +1,4 @@
-# Generated from SQL.g4 by ANTLR 4.13.2
+# Generated from ./src/parser/SQL.g4 by ANTLR 4.13.2
 from antlr4 import *
 if "." in __name__:
     from .SQLParser import SQLParser
@@ -44,6 +44,15 @@ class SQLListener(ParseTreeListener):
         pass
 
 
+    # Enter a parse tree produced by SQLParser#table_list.
+    def enterTable_list(self, ctx:SQLParser.Table_listContext):
+        pass
+
+    # Exit a parse tree produced by SQLParser#table_list.
+    def exitTable_list(self, ctx:SQLParser.Table_listContext):
+        pass
+
+
     # Enter a parse tree produced by SQLParser#column_list.
     def enterColumn_list(self, ctx:SQLParser.Column_listContext):
         pass
@@ -80,12 +89,12 @@ class SQLListener(ParseTreeListener):
         pass
 
 
-    # Enter a parse tree produced by SQLParser#condition.
-    def enterCondition(self, ctx:SQLParser.ConditionContext):
+    # Enter a parse tree produced by SQLParser#condition_list.
+    def enterCondition_list(self, ctx:SQLParser.Condition_listContext):
         pass
 
-    # Exit a parse tree produced by SQLParser#condition.
-    def exitCondition(self, ctx:SQLParser.ConditionContext):
+    # Exit a parse tree produced by SQLParser#condition_list.
+    def exitCondition_list(self, ctx:SQLParser.Condition_listContext):
         pass
 
 
@@ -104,15 +113,6 @@ class SQLListener(ParseTreeListener):
 
     # Exit a parse tree produced by SQLParser#column.
     def exitColumn(self, ctx:SQLParser.ColumnContext):
-        pass
-
-
-    # Enter a parse tree produced by SQLParser#table.
-    def enterTable(self, ctx:SQLParser.TableContext):
-        pass
-
-    # Exit a parse tree produced by SQLParser#table.
-    def exitTable(self, ctx:SQLParser.TableContext):
         pass
 
 
