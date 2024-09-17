@@ -4,6 +4,7 @@ This **Basic Relational Database Management System** will support data managemen
 
 
 ## Parser (Antlr4)
+![parse tree](./src/assets/img/sql_parse_tree.png)
 ### Building from Source
 > antlr4 -Dlanguage=Python3 ./src/parser/SQL.g4
 
