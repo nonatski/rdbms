@@ -462,20 +462,19 @@ class SQLVisitor(ParseTreeVisitor):
             # do not traverse if column does not exist
             # note: column is optional in insert statement
             if not insert_column_list == None:
-                column_list_nodes.append(self.visit(insert_column_list))
+                column_list_nodes = self.visit(insert_column_list)
 
         # check column details if column list is given in the insert statement
         for column in column_list_nodes:
-            for col in column['column_list']:
-                for name in col:
-                    # check if it exists in all the tables
-                    for tableName in table_names:
-                        # ensure that the colum name has no duplicate entry
-                        if not col[name]['duplicate']:
-                            columnDetails = self.schema.getColumnDetails (tableName, name)
-                            if not columnDetails == None:
-                                col[name]['error'] = None
-                                col[name]['valid'] = True
+            for col in column:
+                # check if it exists in all the tables
+                for tableName in table_names:
+                    # ensure that the colum name has no duplicate entry
+                    if not column[col]['duplicate']:
+                        columnDetails = self.schema.getColumnDetails (tableName, col)
+                        if not columnDetails == None:
+                            column[col]['error'] = None
+                            column[col]['valid'] = True
 
         # if no column list is given, get all the columns from the schema
         if len(column_list_nodes) < 1:
@@ -491,7 +490,7 @@ class SQLVisitor(ParseTreeVisitor):
 
                            if not dataType == value_list_nodes[table_total_count][valName]['type']:
                             # show errors
-                            value_list_nodes[table_total_count][valName]['error'] = f"Value [{valName}] must have a data type of [{dataType}]"
+                            value_list_nodes[table_total_count][valName]['error'] = f"Value [{valName}] must have a data type of [{dataType}][{name}]"
                             value_list_nodes[table_total_count][valName]['valid'] = False 
 
 
@@ -522,23 +521,22 @@ class SQLVisitor(ParseTreeVisitor):
 
                 table_column_total_count = 0
 
-                for col in column['column_list']:
-                    for name in col:
-                        if len(table_names) >= 1:
-                            table_columns = self.schema.getColumnDetails (table_names[0], name)
-                            try:
-                                # compare data types and values
-                                for valName in value_list_nodes[table_column_total_count]:
-                                    dataType = table_columns['type']
-                                    if not dataType == value_list_nodes[table_column_total_count][valName]['type']:
-                                        # show errors
-                                        value_list_nodes[table_column_total_count][valName]['error'] = f"Value [{valName}] must have a data type of [{dataType}]"
-                                        value_list_nodes[table_column_total_count][valName]['valid'] = False 
+                for col in column:
+                    if len(table_names) >= 1:
+                        table_columns = self.schema.getColumnDetails (table_names[0], col)
+                        try:
+                            # compare data types and values
+                            for valName in value_list_nodes[table_column_total_count]:
+                                dataType = table_columns['type']
+                                if not dataType == value_list_nodes[table_column_total_count][valName]['type']:
+                                    # show errors
+                                    value_list_nodes[table_column_total_count][valName]['error'] = f"Value [{valName}] must have a data type of [{dataType}][{col}]"
+                                    value_list_nodes[table_column_total_count][valName]['valid'] = False 
 
-                            except IndexError:
-                                pass
-                    
-                        table_column_total_count += 1
+                        except IndexError:
+                            pass
+                
+                    table_column_total_count += 1
         
         # return data
         data = {
@@ -639,9 +637,7 @@ class SQLVisitor(ParseTreeVisitor):
             column_list_nodes.append(self.visit(column_list))
 
         # return data
-        data = {
-            'column_list'   :   column_list_nodes
-        }
+        data = column_list_nodes
         
         self.debugData (data, ctx.getText())
 
