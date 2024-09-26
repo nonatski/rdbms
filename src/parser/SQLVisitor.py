@@ -43,9 +43,11 @@ class SQLVisitor(ParseTreeVisitor):
     def visitSql_statement(self, ctx:SQLParser.Sql_statementContext):
         select_statement = ctx.select_statement ()
         delete_statement = ctx.delete_statement()
+        insert_statement = ctx.insert_statement()
 
         select_list_nodes = []
         delete_list_nodes = []
+        insert_list_nodes = []
 
         # select statement
         if isinstance(select_statement, list):
@@ -60,10 +62,18 @@ class SQLVisitor(ParseTreeVisitor):
                 delete_list_nodes.append(self.visit(delete))
         else:
             delete_list_nodes.append(self.visit(delete_statement))
+
+        # insert statement
+        if isinstance(insert_statement, list):
+            for insert in insert_statement:
+                insert_list_nodes.append(self.visit(insert))
+        else:
+            insert_list_nodes.append(self.visit(insert_statement))
                         
         return {
             'select_statement'  :   select_list_nodes,
-            'delete_statement'  :   delete_statement
+            'delete_statement'  :   delete_statement,
+            'insert_statement'  :   insert_list_nodes,
         }
 
 
@@ -120,9 +130,8 @@ class SQLVisitor(ParseTreeVisitor):
                         if self.schema.isTableExists (tableName):
                             if self.schema.isColumnExists (tableName, columnName):
                                if tableName in table_list_name:
-                                    #print(name, '------')
-                                    cl[name]["error"] = f"Column name {name} does not exists in {tableName}"
-                                    cl[name]["valid"] = False   
+                                    #cl[name]["error"] = f"Column name [{name}] does not exist in [{tableName}]"
+                                    #cl[name]["valid"] = False   
                                     cl[name]["error"] = None
                                     cl[name]["valid"] = True
    
@@ -133,21 +142,23 @@ class SQLVisitor(ParseTreeVisitor):
                         
                         for tl in table_list_name:
                             if self.schema.isColumnExists (tl, name):
-                                    # convert regular columName to table.columnName format to allow
-                                    # matching of parent columns to the columns of its subquery
-                                    cl[name]["name"] = f"{tl}.{name}"
-                                    cl[name]["tableName"] = f"{tl}"
-                                    cl[name]["columnName"] = f"{name}"
-                                    existsInTables.append(tl)
+                                # convert regular columName to table.columnName format to allow
+                                # matching of parent columns to the columns of its subquery
+                                cl[name]["name"] = f"{tl}.{name}"
+                                cl[name]["tableName"] = f"{tl}"
+                                cl[name]["columnName"] = f"{name}"
+                                cl[name]["error"] = None
+                                cl[name]["valid"] = True
+                                existsInTables.append(tl)
                             else:
-                                cl[name]["error"] = f"Column name {name} does not exists in {tl}"
+                                cl[name]["error"] = f"Column name [{name}] does not exist in table [{tl}]"
                                 cl[name]["valid"] = False
                         
                         # if the column name exists in multiple tables, it is considered ambigous
                         # unless the tableName is explicitely specified
                         # SELECT id FROM student_info, enrollment
                         if len (existsInTables) > 1:
-                            cl[name]["error"] = f"Column name {name} is ambigous"
+                            cl[name]["error"] = f"Column name [{name}] is ambigous"
                             cl[name]["valid"] = False
                     
                     else:
@@ -159,6 +170,7 @@ class SQLVisitor(ParseTreeVisitor):
                             for name in table:
                                 if table[name]['valid']:
                                     cols = self.schema.getColumns (name)
+                                    
                                     for colName in cols:
                                         col = {}
                                         col[colName] = {}
@@ -193,8 +205,6 @@ class SQLVisitor(ParseTreeVisitor):
                     for tl in table_list_name:
                         for name in expression_list['column']:
                             if self.schema.isColumnExists (tl, name):
-                                #expression_list['column'][name]["error"] = f"Column name {name} does not exists in {tl}"
-                                #expression_list['column'][name]["valid"] = False
                                 expression_list['column'][name]["error"] = None
                                 expression_list['column'][name]["valid"] = True
                         
@@ -217,7 +227,7 @@ class SQLVisitor(ParseTreeVisitor):
         for subquery_select_node in select_list_nodes:
             for column in subquery_select_node['column_list']:
                 for name in column:
-                    #if column[name]['valid'] == True:
+                    # if column[name]['valid'] == True:
                     # use the property ["name"] instead of name since the name field might contain different
                     # format such as table.column
                     subquery_column_name.append(column[name])
@@ -276,11 +286,11 @@ class SQLVisitor(ParseTreeVisitor):
                             
     
                             
-                        # this ensure that column will not be ambigous
+                        # this ensures that the column name will not be ambigous
                         # columnName = name
                         # ['student_enrollment.name', 'student_info.name']                
                         if len(existsInTables) > 1:
-                            col[name]["error"] = f"Column {col[name]['name']} is ambigous"
+                            col[name]["error"] = f"Column [{col[name]['name']}] is ambigous"
                             col[name]["valid"] = False
 
         # verify clause if column exists
@@ -321,14 +331,14 @@ class SQLVisitor(ParseTreeVisitor):
                         # columnName = name
                         # ['student_enrollment.name', 'student_info.name']    
                         if len(existsInTables) == 0 :
-                            expression['column'][expressionName]["error"] = f"Column {expressionName} does not exists"
+                            expression['column'][expressionName]["error"] = f"Column name [{expressionName}] does not exist"
                             expression['column'][expressionName]["valid"] = False
 
                         elif len(existsInTables) == 1 :
                             expression['column'][expressionName]["error"] = None
                             expression['column'][expressionName]["valid"] = True
                         else:
-                            expression['column'][expressionName]["error"] = f"Column {expressionName} is ambigous"
+                            expression['column'][expressionName]["error"] = f"Column name [{expressionName}] is ambigous"
                             expression['column'][expressionName]["valid"] = False
                             
 
@@ -414,7 +424,132 @@ class SQLVisitor(ParseTreeVisitor):
 
     # Visit a parse tree produced by SQLParser#insert_statement.
     def visitInsert_statement(self, ctx:SQLParser.Insert_statementContext):
-        return self.visitChildren(ctx)
+        insert_table = ctx.table_list()
+        insert_column_list = ctx.insert_column_list()
+        insert_value_list = ctx.values_list()
+
+        table_list_nodes = []
+        column_list_nodes = []
+        value_list_nodes = []
+        table_names = []
+        
+
+        # list tables
+        if isinstance(insert_table, list):
+            for table in insert_table:
+                table_list_nodes.append(self.visit(table))
+        else:
+            table_list_nodes.append(self.visit(insert_table))
+
+        # value list
+        if isinstance(insert_value_list, list):
+            for value in insert_value_list:
+                value_list_nodes.append(self.visit(value))
+        else:
+            value_list_nodes = self.visit(insert_value_list)
+
+
+        # get all names of tables
+        for tables in table_list_nodes:
+            for name in tables:
+                table_names.append(name)
+        
+        # columns
+        if isinstance(insert_column_list, list):
+            for column in insert_column_list:
+                column_list_nodes.append(self.visit(column))
+        else:
+            # do not traverse if column does not exist
+            # note: column is optional in insert statement
+            if not insert_column_list == None:
+                column_list_nodes.append(self.visit(insert_column_list))
+
+        # check column details if column list is given in the insert statement
+        for column in column_list_nodes:
+            for col in column['column_list']:
+                for name in col:
+                    # check if it exists in all the tables
+                    for tableName in table_names:
+                        # ensure that the colum name has no duplicate entry
+                        if not col[name]['duplicate']:
+                            columnDetails = self.schema.getColumnDetails (tableName, name)
+                            if not columnDetails == None:
+                                col[name]['error'] = None
+                                col[name]['valid'] = True
+
+        # if no column list is given, get all the columns from the schema
+        if len(column_list_nodes) < 1:
+            if len(table_names) >= 1:
+                table_columns = self.schema.getColumns (table_names[0])
+                table_total_count = 0
+                
+                for name in table_columns:
+                    try:
+                        # compare data types of the table and the values
+                        for valName in value_list_nodes[table_total_count]:
+                           dataType = table_columns[name]['type']
+
+                           if not dataType == value_list_nodes[table_total_count][valName]['type']:
+                            # show errors
+                            value_list_nodes[table_total_count][valName]['error'] = f"Value [{valName}] must have a data type of [{dataType}]"
+                            value_list_nodes[table_total_count][valName]['valid'] = False 
+
+
+                    except IndexError:
+                        # there are more columns in the table but the value specified is not equal to its length
+                        # However, do not throw an error if the column is nullable
+                        if table_columns[name]['nullable']:
+                            pass
+                        else:
+                            # add to column list but put some errors
+                            col = {
+                                'name'  :   name,
+                                'error' :   f"Column name [{name}] must not be empty",
+                                'valid' :   False
+                            }
+
+                            column_list_nodes.append(col)
+
+                    table_total_count += 1
+            else:
+                # returns an empty node if the table list is empty
+                return {}
+        else:
+            # for insert statement with columns
+            # INSERT INTO table (col1,col2, ...)
+            # check column details and compare to values
+            for column in column_list_nodes:
+
+                table_column_total_count = 0
+
+                for col in column['column_list']:
+                    for name in col:
+                        if len(table_names) >= 1:
+                            table_columns = self.schema.getColumnDetails (table_names[0], name)
+                            try:
+                                # compare data types and values
+                                for valName in value_list_nodes[table_column_total_count]:
+                                    dataType = table_columns['type']
+                                    if not dataType == value_list_nodes[table_column_total_count][valName]['type']:
+                                        # show errors
+                                        value_list_nodes[table_column_total_count][valName]['error'] = f"Value [{valName}] must have a data type of [{dataType}]"
+                                        value_list_nodes[table_column_total_count][valName]['valid'] = False 
+
+                            except IndexError:
+                                pass
+                    
+                        table_column_total_count += 1
+        
+        # return data
+        data = {
+            'table_list'    :   table_list_nodes,
+            'column_list'   :   column_list_nodes,
+            'value_list'    :   value_list_nodes,
+        }
+        
+        self.debugData (data, ctx.getText())
+
+        return data
 
 
     # Visit a parse tree produced by SQLParser#table_list.
@@ -427,16 +562,16 @@ class SQLVisitor(ParseTreeVisitor):
                # skp semicolon for multiple tables
                if not child.getText() == ',':
                     self.annotations[child.getText()] =  {
-                        "name": child.getText(),
-                        "error": None,
-                        "valid": True,
+                        "name"  :  child.getText(),
+                        "error" :  None,
+                        "valid" :  True,
                     }
 
                     if not self.schema.isTableExists(child.getText()):
                         self.annotations[child.getText()] =  {
-                            "name": child.getText(),
-                            "error": f"Table {child.getText()} not found",
-                            "valid": False,
+                            "name"  : child.getText(),
+                            "error" : f"Table {child.getText()} not found",
+                            "valid" : False,
                         }
 
         return self.annotations
@@ -452,10 +587,10 @@ class SQLVisitor(ParseTreeVisitor):
                 columns = column.getText().split(',')
                 for columnName in columns:
                     self.annotation[columnName] =  {
-                        "name": columnName,
-                        "error": f"Column {columnName} does not exists",
-                        "valid": False,
-                        "type": "column"
+                        "name"  : columnName,
+                        "error" : f"Column name [{columnName}] does not exist",
+                        "valid" : False,
+                        "type"  : "column"
                     }
 
                     # if the columName is a string 
@@ -479,12 +614,38 @@ class SQLVisitor(ParseTreeVisitor):
 
     # Visit a parse tree produced by SQLParser#values_list.
     def visitValues_list(self, ctx:SQLParser.Values_listContext):
-        return self.visitChildren(ctx)
+        value_list = ctx.value ()
+        value_list_nodes = []
+
+        # list tables
+        if isinstance(value_list, list):
+            for value in value_list:
+                value_list_nodes.append(self.visit(value))
+        else:
+            value_list_nodes.append(self.visit(value_list))
+
+        return value_list_nodes
 
 
     # Visit a parse tree produced by SQLParser#insert_column_list.
     def visitInsert_column_list(self, ctx:SQLParser.Insert_column_listContext):
-        return self.visitChildren(ctx)
+        column_list = ctx.column()
+        column_list_nodes = []
+        
+        if isinstance(column_list, list):
+            for column in column_list:
+                column_list_nodes.append(self.visit(column))
+        else:
+            column_list_nodes.append(self.visit(column_list))
+
+        # return data
+        data = {
+            'column_list'   :   column_list_nodes
+        }
+        
+        self.debugData (data, ctx.getText())
+
+        return data
 
 
     # Visit a parse tree produced by SQLParser#where_clause.
@@ -541,46 +702,75 @@ class SQLVisitor(ParseTreeVisitor):
     # Visit a parse tree produced by SQLParser#column.
     def visitColumn(self, ctx:SQLParser.ColumnContext):
         self.annotation = {}
-        for column in ctx.getChildren():
+        column_names = []
 
-            columns = column.getText().split(',')
+        for column in ctx.getChildren():
+            
+            # skip comma and return an empty array instead
+            # this will prevent .split(',') function in returning two empty text ['', '']
+            if column.getText() == ',':
+                columns =  []
+            else:
+                columns = column.getText().split(',')
 
             for columnName in columns:
                 self.annotation[columnName] =  {
-                    "name": columnName,
-                    "error": f"Column {columnName} does not exists",
-                    "valid": False,
-                    "type": "column"
+                    "name"      :   columnName,
+                    "error"     :   f"Column name [{columnName}] does not exist",
+                    "valid"     :   False,
+                    "type"      :   "column",
+                    "duplicate" :   False
                 }
-
-                # if the columName is a string 
-                # example statement: SELECT "a"
-                if columnName[0] == "'" or columnName[0] == '"':
-                    self.annotation[columnName]["type"] = "string"
-                else:
+                
+                if len(columnName) > 0:
+                    # if the columName is a string 
+                    # example statement: SELECT "a"
+                    if columnName[0] == "'" or columnName[0] == '"':
+                        self.annotation[columnName]["type"] = "string"
+                    else:
                     
-                    # detect if the columName contains dot
-                    # table.column
-                    tableColumnName = columnName.split('.')
+                        # detect if the columName contains dot
+                        # table.column
+                        tableColumnName = columnName.split('.')
+                        
+                        if len(tableColumnName) >= 2:
+                            # check if column exists
+                            self.annotation[columnName]["type"] = "table"
+                            self.annotation[columnName]["tableName"] = tableColumnName[0]
+                            self.annotation[columnName]["columnName"] = tableColumnName[1]
+                    
 
-                    if len(tableColumnName) >= 2:
-                        # check if column exists
-                        self.annotation[columnName]["type"] = "table"
-                        self.annotation[columnName]["tableName"] = tableColumnName[0]
-                        self.annotation[columnName]["columnName"] = tableColumnName[1]
+                    # column must not have a duplicate
+                    # INSERT INTO TABLE (name, name)
+                    if columnName in column_names:
+                        self.annotation[columnName]["error"] = f"Duplicate entry for column name [{columnName}]"
+                        self.annotation[columnName]["duplicate"] = True
+                    else:
+                        column_names.append(columnName)
+
+                else:
+                    pass
+
 
         return self.annotation
 
 
     # Visit a parse tree produced by SQLParser#value.
     def visitValue(self, ctx:SQLParser.ValueContext):
+
         self.annotation = {}
-        self.annotation[ctx.getChild(0).getText()] =  {
-            "name": ctx.getChild(0).getText(),
-            "error": None,
-            "valid": True,
+        name = ctx.getChild(0).getText()
+
+        self.annotation[name] =  {
+            "name"  :   name,
+            "error" :   None,
+            "valid" :   True,
+            "type"  :   'string'
         }
 
+        if not name[0] == "'":
+            self.annotation[name]['type'] = 'integer'
+        
         return self.annotation
 
 

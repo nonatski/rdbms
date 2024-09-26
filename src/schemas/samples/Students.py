@@ -14,10 +14,13 @@ class Students (SchemaGenerator):
     self.addTable ('student_info')
     self.addColumns ('student_info', [
       {
-        'name':'string'
+        'name'  : 'name',
+        'type'  : 'string'
       },
       {
-        'age' : 'int'
+        'name'      :   'age',
+        'type'      :   'integer',
+
       }
     ])
 
@@ -25,10 +28,12 @@ class Students (SchemaGenerator):
     self.addTable ('student_enrollment')
     self.addColumns ('student_enrollment', [
       {
-        'name':'string'
+        'name'  : 'name',
+        'type'  : 'string'
       },
       {
-        'year' : 'int'
+        'name'      :   'year',
+        'type'      :   'integer',
       }
     ])
 
