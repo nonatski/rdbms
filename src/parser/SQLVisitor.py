@@ -72,7 +72,7 @@ class SQLVisitor(ParseTreeVisitor):
                         
         return {
             'select_statement'  :   select_list_nodes,
-            'delete_statement'  :   delete_statement,
+            'delete_statement'  :   delete_list_nodes,
             'insert_statement'  :   insert_list_nodes,
         }
 
