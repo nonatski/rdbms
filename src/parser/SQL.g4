@@ -13,7 +13,7 @@ insert_statement: INSERT INTO table_list insert_column_list? VALUES values_list;
 
 table_list: WORD+ (',' WORD+)*;
 column_list: '*' | column (',' column)*;
-values_list: '('value (',' value)*')';
+values_list: OPENPAR value (',' value)* CLOSEPAR;
 insert_column_list: '('column (',' column)*')';
 
 where_clause: WHERE condition_list;
