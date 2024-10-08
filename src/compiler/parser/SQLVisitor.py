@@ -649,6 +649,17 @@ class SQLVisitor(ParseTreeVisitor):
 
         condition_list = ctx.condition_list()
         condition_list_nodes = []
+        condition_logic_nodes = []
+
+        for cond in ctx.getChildren():
+            if not cond.getChild(1) == None:
+                condition_logic_nodes.append({
+                    cond.getChild(1).getText(): { 
+                        'name'  :   cond.getChild(1).getText(),
+                        'valid' :   True,
+                        'type'  :   'logic'
+                    }
+                })
 
         if isinstance (condition_list, list):
             for conditions in condition_list:
@@ -657,7 +668,8 @@ class SQLVisitor(ParseTreeVisitor):
             condition_list_nodes.append(self.visit(condition_list))
         
         return {
-            "condition_list"    :   condition_list_nodes
+            "condition_list"    :   condition_list_nodes,
+            "logic_list"        :   condition_logic_nodes
         }
             
     # Visit a parse tree produced by SQLParser#condition_list.

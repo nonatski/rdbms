@@ -13,19 +13,14 @@ from schemas.samples.Students import Students
 # restore parent directory path
 sys.path.append(os.path.abspath(os.path.join(dir_path, os.pardir)))
 
-from SQLAnnotate import SQLAnnotate
+from compiler.analyzer.SQLAnnotate import SQLAnnotate
+from compiler.generator.IntermediateCodeGenerator import IntermediateCodeGenerator
 
-def main(argv):
-    inputStream = antlr4.InputStream(argv[1])
+if __name__ == '__main__':
+    inputStream = antlr4.InputStream(sys.argv[1])
     sqlAnnotate = SQLAnnotate(sql = inputStream, schema = Students)
     sqlAnnotate.annotate()
+    annotations = sqlAnnotate.getAnnotations()
 
-    results = sqlAnnotate.getAnnotations()
-
-    if '--pretty' in argv:
-        pprint.PrettyPrinter(indent=1).pprint(results)
-    else:
-        print(results)
-    
-if __name__ == '__main__':
-    main(sys.argv)
+    code = IntermediateCodeGenerator (annotations)
+    print(code.generate())
