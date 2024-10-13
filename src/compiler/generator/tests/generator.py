@@ -23,4 +23,13 @@ if __name__ == '__main__':
     annotations = sqlAnnotate.getAnnotations()
 
     code = IntermediateCodeGenerator (annotations)
-    print(code.generate())
+    results = code.generate()
+
+    try:
+        if sys.argv[2] == '--reverse':
+            print(results.reverse().getResults())
+        else:
+            print(results.getResults())
+
+    except Exception as e:
+        print(results.getResults())

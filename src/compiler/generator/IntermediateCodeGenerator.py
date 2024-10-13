@@ -9,7 +9,6 @@ sys.path.append(os.path.abspath(os.path.join(dir_path, os.pardir)))
 class IntermediateCodeGenerator:
     def __init__ (self, annotations):  
         self.errors         =   []
-        self.data           =   None
         self.annotations    =   annotations
         self.statement      =   {}
         
@@ -24,7 +23,7 @@ class IntermediateCodeGenerator:
     def getResults (self):
         return {
             'error'     :   self.errors,
-            'data'      :   self.data
+            'data'      :   self.statement
         }
     
     def generate (self):
@@ -49,9 +48,38 @@ class IntermediateCodeGenerator:
             if len(self.annotations['data']['insert_statement']) >= 1:
                 self.statement = self.__readInsertStatement (self.annotations['data']['insert_statement'])
         
-        # returns all the data and error if any
-        return self.statement 
+        return self
     
+    def reverse (self):
+        self.statement = self.__readChildren (self.statement, self.statement)
+
+        return self
+    
+    def __readChildren (self, childNode, parentNode = None):
+
+        parentNodeCopy = None
+
+        # copy parent  without its children
+        if not parentNode == None:
+            parentNodeCopy = parentNode.copy()
+            if 'children' in parentNodeCopy:
+                parentNodeCopy.pop('children')
+
+        childNode['nodes'] = parentNodeCopy
+
+        # return the nodes if it has no children, otherwise continue
+        if not self.__hasChildren(childNode): return childNode
+        child = self.__readChildren(childNode['children'], childNode)
+
+        return child
+
+    def __hasChildren (sel, node):
+        if not node: return False
+        if not 'children' in node: return False
+        if node['children'] == None: return False
+
+        return True
+
     def __readSelectStatement (self, statement):
 
         for stmt in statement:
@@ -63,13 +91,13 @@ class IntermediateCodeGenerator:
                 if len(table_list['__r__']) > 1:
                     for tb in table_list['__r__']:
                         tbl.append({
-                            '__r__' :   tb,
-                            'children' :   None
+                            '__r__'     :   tb,
+                            'children'  :   None
                         })
                 else:
                     tbl.append({
-                        '__r__' :   table_list['__r__'],
-                        'children' :   None
+                        '__r__'     :   table_list['__r__'],
+                        'children'  :   None
                     })
 
             if len(tbl) > 1:
@@ -96,13 +124,13 @@ class IntermediateCodeGenerator:
                 if len(table_list['__r__']) > 1:
                     for tb in table_list['__r__']:
                         tbl.append({
-                            '__r__' :   tb,
-                            'children' :   None
+                            '__r__'     :   tb,
+                            'children'  :   None
                         })
                 else:
                     tbl.append({
-                        '__r__' :   table_list['__r__'],
-                        'children' :   None
+                        '__r__'     :   table_list['__r__'],
+                        'children'  :   None
                     })
                     
             if len(tbl) > 1:
@@ -125,13 +153,13 @@ class IntermediateCodeGenerator:
                 if len(table_list['__r__']) > 1:
                     for tb in table_list['__r__']:
                         tbl.append({
-                            '__r__' :   tb,
-                            'children' :   None
+                            '__r__'     :   tb,
+                            'children'  :   None
                         })
                 else:
                     tbl.append({
-                        '__r__' :   table_list['__r__'],
-                        'children' :   None
+                        '__r__'     :   table_list['__r__'],
+                        'children'  :   None
                     })
 
                 column_list = self.__readColumnList (stmt['column_list'], self.__union(tbl, value_list))
@@ -145,8 +173,8 @@ class IntermediateCodeGenerator:
                 columns.append(column[name]['name'])
         
         return {
-            '__π__' : columns,
-            'children' : children
+            '__π__'     : columns,
+            'children'  : children
         }
         
     
