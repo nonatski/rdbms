@@ -1,7 +1,5 @@
-import antlr4
 import sys
 import os
-from antlr4 import *
 
 dir_path = os.path.dirname(os.path.realpath(__file__))
 sys.path.append(os.path.abspath(os.path.join(dir_path, os.pardir)))
@@ -51,7 +49,11 @@ class IntermediateCodeGenerator:
         return self
     
     def reverse (self):
-        self.statement = self.__readChildren (self.statement, self.statement)
+        parentNodeCopy = self.statement .copy()
+        if 'children' in parentNodeCopy:
+            parentNodeCopy.pop('children')
+
+        self.statement = self.__readChildren (self.statement)
 
         return self
     
@@ -65,7 +67,8 @@ class IntermediateCodeGenerator:
             if 'children' in parentNodeCopy:
                 parentNodeCopy.pop('children')
 
-        childNode['nodes'] = parentNodeCopy
+        if not parentNodeCopy == None:
+            childNode['nodes'] = parentNodeCopy
 
         # return the nodes if it has no children, otherwise continue
         if not self.__hasChildren(childNode): return childNode
