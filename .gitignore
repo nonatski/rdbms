@@ -93,3 +93,10 @@ venv.bak/
 
 # Spyder project settings
 .spyderpro
+
+#python virtual environment
+bin/
+pyvenv.cfg
+
+# MacOs
+.DS_Store
