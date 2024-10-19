@@ -680,15 +680,17 @@ class SQLVisitor(ParseTreeVisitor):
         condition_list_nodes = []
         condition_logic_nodes = []
 
-        for cond in ctx.getChildren():
-            if not cond.getChild(1) == None:
-                condition_logic_nodes.append({
-                    cond.getChild(1).getText(): { 
-                        'name'  :   cond.getChild(1).getText(),
-                        'valid' :   True,
-                        'type'  :   'logic'
-                    }
-                })
+        for c in ctx.getChildren():
+            if (str(type(c)).startswith("<class")):
+                for x in range(c.getChildCount()):
+                    if (c.getChild(x).getText().lower() == 'and') or (c.getChild(x).getText().lower() == 'or'):
+                        condition_logic_nodes.append({
+                            c.getChild(x).getText().upper(): { 
+                                'name'  :   c.getChild(x).getText().upper(),
+                                'valid' :   True,
+                                'type'  :   'logic'
+                            }
+                       })
 
         if isinstance (condition_list, list):
             for conditions in condition_list:
