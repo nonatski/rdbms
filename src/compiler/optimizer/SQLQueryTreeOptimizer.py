@@ -66,6 +66,16 @@ class SQLQueryTreeOptimizer:
                 if not node['children'] == None: 
                     return self.__getLastChild (node['children'])
         return node
+
+    def __getParentNode (self, childNode, parentNode = None):
+        # get all children's children
+        if not childNode == None:
+            if 'children' in childNode:
+                if not childNode['children'] == None: 
+                    return self.__getParentNode(childNode['children'], childNode)
+    
+        return parentNode
+    
     
     def __getNodeLength (self, node, length):
         # get all children's children
@@ -98,6 +108,15 @@ class SQLQueryTreeOptimizer:
             'nodeChildren'  :   nodeChildren 
         }
     
+    def __insertNodeBefore (self, currentNode, nodeToInsert):
+
+        if not 'children' in nodeToInsert: nodeToInsert['children'] = None
+
+        nodeToInsert['children'] = currentNode
+
+        return nodeToInsert
+
+
     def __visitNode (self, node):
 
         currentNodeType     =   self.__getNodeType (node)
@@ -213,7 +232,8 @@ class SQLQueryTreeOptimizer:
                     currentNodeType =   parsedNode['currentNodeType']
                     nextNodeType    =   parsedNode['nextNodeType']
 
-                if (currentNodeType['nodeType'] == '__Ω__') and (nextNodeType['nodeType'] == '__x__'):
+                # Disable converting to theta join
+                '''if (currentNodeType['nodeType'] == '__Ω__') and (nextNodeType['nodeType'] == '__x__'):
                     parsedNode      =   self.__convertToThetaJoin (currentNode, nextNode)
                     currentNode     =   parsedNode['currentNode']
                     nextNode        =   parsedNode['nextNode']
@@ -232,7 +252,7 @@ class SQLQueryTreeOptimizer:
                     currentNode     =   parsedNode['currentNode']
                     nextNode        =   parsedNode['nextNode']
                     currentNodeType =   parsedNode['currentNodeType']
-                    nextNodeType    =   parsedNode['nextNodeType']
+                    nextNodeType    =   parsedNode['nextNodeType']'''
 
 
                 if self.debug and self.debugLevel > 2:
@@ -589,7 +609,7 @@ class SQLQueryTreeOptimizer:
                     print(f"-->-----PUSHED ALL(__Ω__) to (__r__ in {nextNodeType['nodeType']}) -------")
                     print(newNode)
                     print('-->---------------------------------------------\r\n')
-                    
+
             # replce nexNode
             if 'children' in currentNode: nextNode    =   currentNode['children']
             
@@ -614,6 +634,7 @@ class SQLQueryTreeOptimizer:
         lastChildrenNodeType    =   self.__getNodeType (lastChildren)
         parsedNode              =   { 'currentNode'   :   {}}
         originalColumnCount     =   len(columns)
+        undistributedColumns    =   columns.copy()
 
         if self.debug and self.debugLevel > 2:
             print(f"-->-----[PUSHING SELECTIONS TO RELATIONS] -------")
@@ -621,34 +642,80 @@ class SQLQueryTreeOptimizer:
             print('--\r\n---', lastChildren)
             print('-->---------------------------------------------\r\n')
 
-        if (lastChildrenNodeType['nodeType'] == '__x__') or (lastChildrenNodeType['nodeType'] == '__θ__'):
-            parsedNode              =   self.__pushSelectionToJoin(currentNode, lastChildren)
-            undistributedColumns    =   parsedNode['undistributedColumns']
-            undistributedOperators  =   parsedNode['operators']
 
-            # if all the selections had been distributed, replace the currentNode with the next element
-            # if len(undistributedColumns) > 0: currentNode =   nextNode
-            # currentNode =   parsedNode['currentNode']
-            #nextNode    =   currentNode['children']
+        if lastChildrenNodeType['nodeType'] == '__x__':
+            for c in lastChildren:
+                if not lastChildren[c] == None:
+                    for x in lastChildren[c]:
+                        # get the last node
+                        l = self.__getLastChild(x)
+                        # get the parent of the same node
+                        t = self.__getParentNode(x)
 
-            # if there are changes on the current selection list
+                        # as a final check, ensure that it is the same node to be replaced
+                        # it must also be a relation (_r__)
+                        # otherwise, do not proceed
+                        p = self.__getLastChild(t)
+
+                        if self.debug and self.debugLevel > 2:
+                            print('\r\n--parentNode--', p)
+                            print('\r\n--lastNode--', lastChildren[c])
+                        
+                        # if the parentNode is None, the parent is a cross join (__r__)
+                        # '__x__' : [{'__r__ : ..} ...]
+                        if p == None:
+                            # push to current node to cross join
+                            parsedNode = self.__pushSelectionToJoin (currentNode, lastChildren)
+
+                            # update the current node if something has been moved
+                            if not originalColumnCount == len(parsedNode['undistributedColumns']):
+                                # replace current node if all has been pushed down
+                                if len(parsedNode['undistributedColumns']) < 1:
+                                    currentNode =   nextNode
+                                    nextNode    =   currentNode['children']
+                                else:
+                                    # update the current node with the remaining selections
+                                    currentNode['__Ω__']        =   parsedNode['undistributedColumns']
+                                    currentNode['operators']    =   parsedNode['operators']
+                                    nextNode                    =   currentNode['children']
+
+                                    if self.debug and self.debugLevel > 2:
+                                        print('---parsedNode undistributedColumns', parsedNode['undistributedColumns'])
+                                        
+                        # proceed if the last child's parent is the same with the last node's parent
+                        # this ensures that we are manipulating the right branch of the query tree                
+                        if (p == l) and (not p == None):
+                            if '__r__' in l:
+                                for column in columns:
+                                    # split expression by its operator
+                                    # example: c.b=2 will be transformed to --> ['c.b', '=', '2']
+                                    columnWithCondition = re.split(r'\s*(=|!=|<=|>=|<|>)\s*', column)
+                                    if len (columnWithCondition) > 2:
+                                        tableColumn = columnWithCondition[0].split('.')
+                                        if len (tableColumn) >=2:
+                                            if tableColumn[0] == l['__r__']: 
+                                                if 'children' in t:
+                                                    t['children'] = {
+                                                        '__Ω__'     :   [column],
+                                                        'operators' :   [],
+                                                        'children'  :   l
+                                                    }
+                                                    undistributedColumns.remove(column)
+
+            if self.debug and self.debugLevel > 2:    
+                print('\r\n--current--', currentNode)
+                print('\r\n----nextNode', nextNode['children'])
+                print('--und', undistributedColumns)
+
+             # if there are changes on the current selection list
             if not originalColumnCount == len(undistributedColumns):
                 # if all has been distributed to it respective relations (__r__), replace the current node
                 if len(undistributedColumns) < 1:
                     currentNode =   nextNode
                     nextNode    =   currentNode['children']
-                else:
-                    currentNode['__Ω__']        =   undistributedColumns
-                    currentNode['operators']    =   undistributedOperators
-
-
+ 
             if self.debug and self.debugLevel > 2:
-                print('-->-----[Remove subsequent __sel__]-------')
-                print('--unditributed--', undistributedColumns)
                 print('\r\n--current--', currentNode)
-                print('\r\n--next--', nextNode)
-                print('\r\n--parsed--', parsedNode['currentNode'])
-                print('-->-------------------------------------\r\n')
 
         return {
             'currentNode'       :   currentNode,
