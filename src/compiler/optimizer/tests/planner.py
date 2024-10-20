@@ -15,7 +15,7 @@ sys.path.append(os.path.abspath(os.path.join(dir_path, os.pardir)))
 
 from compiler.analyzer.SQLAnnotate import SQLAnnotate
 from compiler.generator.IntermediateCodeGenerator import IntermediateCodeGenerator
-from compiler.optimizer.SQLQueryTreeTransformer import SQLQueryTreeTransformer
+from compiler.optimizer.SQLQueryTreeOptimizer import SQLQueryTreeOptimizer
 from compiler.optimizer.SQLQueryPlan import SQLQueryPlan
 
 if __name__ == '__main__':
@@ -25,14 +25,18 @@ if __name__ == '__main__':
     annotations = sqlAnnotate.getAnnotations()
 
     code = IntermediateCodeGenerator (annotations)
-    queryTree = code.generate().reverse().getResults()
+    queryTree = code.generate().getResults()
 
     # feed the query plan to optimer to generate possible queries
     # NOTE: the current transformer do nothing as of the moment
-    queryTreeTransformer = SQLQueryTreeTransformer (queryTree)
+    queryTreeTransformer = SQLQueryTreeOptimizer (queryTree)
     transformedTrees = queryTreeTransformer.transform ()
 
     generatedQueryPlans = []
+
+    print('-->-------[OPTIMIZED TREES]------')
+    print (transformedTrees)
+    print('-->------------------------------\r\n')
 
     if "trees" in transformedTrees:
         for tree in transformedTrees["trees"]:

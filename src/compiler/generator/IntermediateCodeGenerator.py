@@ -241,7 +241,7 @@ class IntermediateCodeGenerator:
         return {'__r__'  : tables, 'children' : None}
     
     def __crossJoin (self, table_list):
-        return { '__x__' : table_list }
+        return { '__x__' : table_list, 'children' : None }
 
     def __union (self, table_list, value_list = []):
         return { '__u__' : table_list, '__t__' : value_list }

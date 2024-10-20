@@ -1,6 +1,7 @@
 import sys
 import os
 import re
+import copy
 
 dir_path = os.path.dirname(os.path.realpath(__file__))
 sys.path.append(os.path.abspath(os.path.join(dir_path, os.pardir)))
@@ -122,10 +123,11 @@ class SQLQueryTreeOptimizer:
 
                 # remove duplicate parent and direct descendant
                 if (currentNodeType['nodeType'] == nextNodeType['nodeType']) and (currentNodeType['nodeValue'] == nextNodeType['nodeValue']):
-                    parsedNode      =   self.__removeDuplicateNextNode (currentNode, nextNodeType)
-                    currentNode     =   parsedNode['currentNode']
-                    nextNode        =   parsedNode['nextNode']
-                    nextNodeType    =   parsedNode['nextNodeType']
+                    parsedNode          =   self.__removeDuplicateNextNode (currentNode, nextNode)
+                    currentNode         =   parsedNode['currentNode']
+                    nextNode            =   parsedNode['nextNode']
+                    currentNodeType     =   parsedNode['currentNodeType']
+                    nextNodeType        =   parsedNode['nextNodeType']
                 
                 # look ahead
                 # remove duplicate if the children has also a children with the same type of the current node
@@ -265,16 +267,16 @@ class SQLQueryTreeOptimizer:
         
         if self.debug and self.debugLevel > 2:
             print('-->-----[CONVERT (__Ω__ and __x__) TO __θ__]-------')
-            print(currentNode)
+            print('--FROM--', currentNode)
             print('------\r\n')
-            print(newNextNode)
+            print('--TO--', newNextNode)
             print('-->-----------------------------------------------')
         
         return {
             'currentNode'       :       newNextNode,
-            'nextNode'          :       currentNode['children'],
+            'nextNode'          :       newNextNode['children'],
             'currentNodeType'   :       self.__getNodeType (currentNode),
-            'nextNodeType'      :       self.__getNodeType (currentNode['children']) 
+            'nextNodeType'      :       self.__getNodeType (newNextNode['children']) 
         }
 
     def __splitSelections (self, currentNode, nextNode):
@@ -298,12 +300,13 @@ class SQLQueryTreeOptimizer:
                     # remove and add new operators
                     newColumns.append (col)
                     undistributedColumns.remove(col)
-                    
-                    # fill up operators with OR based on the new children's length
-                    if colIndex < len(operators) - 1:
-                        newOperators.append ('OR')
 
             colIndex += 1
+        
+        for col in range(len(newColumns)-1):
+            # fill up operators with OR based on the new children's length
+            # if colIndex < (len(operators) - 1):
+            newOperators.append ('OR')
         
         # replace current node if there are unsplit selections
         if (originalColumnCount > len(undistributedColumns)) and len (newColumns) > 0:
@@ -318,22 +321,49 @@ class SQLQueryTreeOptimizer:
                 if newChildren == None:
                     newChildren = child
                 else:
+                    # append the next __Ω__ to the last children
+                    # __Ω__ -> children -> __Ω__ -> children -> ...
                     lastChild = self.__getLastChild (newChildren)
+
                     if 'children' in lastChild:
                         # assign the last child with the nextNode of the currentNode
-                        child['children']   =   nextNode
                         lastChild['children'] = child
 
+            if self.debug and self.debugLevel > 2: print('\r\n---newChildren---', newChildren)
+   
+            # get the last node of the new children and append the next node
+            # ensure that it was cloned to avoid unnecessary referencing
+            childrenCopy = copy.deepcopy(newChildren)
+            lastChild = self.__getLastChild (childrenCopy)
+
+            if self.debug and self.debugLevel > 2:
+                print('\r\n---lastChild---', lastChild)
+                print('\r\n---node to append---', nextNode)
+                print('\r\n---remaining columns---', undistributedColumns)
+
+            if 'children' in lastChild:
+                    # assign the last child with the nextNode of the currentNode
+                    lastChild['children']   =   nextNode
+            
+            if self.debug and self.debugLevel > 2:
+                print('\r\n---children with nextNode---', childrenCopy)
+                print('\r\n---curNode---', currentNode)
+
+            currentNode =    copy.deepcopy(currentNode)
             currentNode['__Ω__']        =   undistributedColumns
             currentNode['operators']    =   newOperators
-            currentNode['children']     =   newChildren
-            nextNode                    =   currentNode['children']
+            currentNode['children']     =   childrenCopy
             
+            if self.debug and self.debugLevel > 2: print('\r\n---new current---', currentNode)
+    
 
         if self.debug and self.debugLevel > 2:
-            print('-->------[SPLIT SELECTION (__Ω__)]--------')
+            print('\r\n-->------[SPLIT SELECTION (__Ω__)]--------')
             print(currentNode)
             print('-->---------------------------------------\r\n')
+
+        # next node to parse
+        nextNode = currentNode['children'] 
 
         return {
             'currentNode'       :     currentNode,
@@ -552,56 +582,87 @@ class SQLQueryTreeOptimizer:
                 currentNode['__Ω__']        =   undistributedColumns
                 currentNode['children']     =   newNode
             else:
+                # replace current node   
                 currentNode    =   newNode
 
-            if 'children' in currentNode:
-                nextNode    =   currentNode['children']
+                if self.debug and self.debugLevel > 2:
+                    print(f"-->-----PUSHED ALL(__Ω__) to (__r__ in {nextNodeType['nodeType']}) -------")
+                    print(newNode)
+                    print('-->---------------------------------------------\r\n')
+                    
+            # replce nexNode
+            if 'children' in currentNode: nextNode    =   currentNode['children']
             
-            if self.debug and self.debugLevel > 2:
-                print(f"-->-----PUSH (__Ω__) to (__r__ in {nextNodeType['nodeType']}) -------")
-                print(currentNode)
-                print('-->---------------------------------------------\r\n')
+        if self.debug and self.debugLevel > 2:
+            print(f"-->-----PUSH (__Ω__) to (__r__ in {nextNodeType['nodeType']}) -------")
+            print(currentNode)
+            print('-->---------------------------------------------\r\n')
+
             
-            return {
-                'currentNode'           :   currentNode,
-                'nextNode'              :   nextNode,
-                'currentNodeType'       :   self.__getNodeType (currentNode),
-                'nextNodeType'          :   self.__getNodeType (nextNode),
-                'undistributedColumns'  :   undistributedColumns
-            }
+        return {
+            'currentNode'           :   currentNode,
+            'nextNode'              :   nextNode,
+            'currentNodeType'       :   self.__getNodeType (currentNode),
+            'nextNodeType'          :   self.__getNodeType (nextNode),
+            'undistributedColumns'  :   undistributedColumns,
+            'operators'             :   newOperators
+        }
 
     def __pushSelectionsToRelations (self, currentNode, nextNode):
+        columns                 =   currentNode['__Ω__']
         lastChildren            =   self.__getLastChild(currentNode)
         lastChildrenNodeType    =   self.__getNodeType (lastChildren)
         parsedNode              =   { 'currentNode'   :   {}}
+        originalColumnCount     =   len(columns)
+
+        if self.debug and self.debugLevel > 2:
+            print(f"-->-----[PUSHING SELECTIONS TO RELATIONS] -------")
+            print(currentNode)
+            print('--\r\n---', lastChildren)
+            print('-->---------------------------------------------\r\n')
 
         if (lastChildrenNodeType['nodeType'] == '__x__') or (lastChildrenNodeType['nodeType'] == '__θ__'):
             parsedNode              =   self.__pushSelectionToJoin(currentNode, lastChildren)
             undistributedColumns    =   parsedNode['undistributedColumns']
+            undistributedOperators  =   parsedNode['operators']
 
             # if all the selections had been distributed, replace the currentNode with the next element
-            if len(undistributedColumns) < 1: currentNode =   nextNode
+            # if len(undistributedColumns) > 0: currentNode =   nextNode
+            # currentNode =   parsedNode['currentNode']
+            #nextNode    =   currentNode['children']
 
-        if self.debug and self.debugLevel > 2:
-            print('-->-----[Remove subsequent __π__]-------')
-            print('--unditributed--', undistributedColumns)
-            print('\r\n--current--', currentNode)
-            print('\r\n--next--', nextNode)
-            print('\r\n--parsed--', parsedNode['currentNode'])
-            print('-->-------------------------------------\r\n')
+            # if there are changes on the current selection list
+            if not originalColumnCount == len(undistributedColumns):
+                # if all has been distributed to it respective relations (__r__), replace the current node
+                if len(undistributedColumns) < 1:
+                    currentNode =   nextNode
+                    nextNode    =   currentNode['children']
+                else:
+                    currentNode['__Ω__']        =   undistributedColumns
+                    currentNode['operators']    =   undistributedOperators
+
+
+            if self.debug and self.debugLevel > 2:
+                print('-->-----[Remove subsequent __sel__]-------')
+                print('--unditributed--', undistributedColumns)
+                print('\r\n--current--', currentNode)
+                print('\r\n--next--', nextNode)
+                print('\r\n--parsed--', parsedNode['currentNode'])
+                print('-->-------------------------------------\r\n')
 
         return {
             'currentNode'       :   currentNode,
             'nextNode'          :   nextNode,
             'currentNodeType'   :   self.__getNodeType (currentNode),
-            'nextNodeType'      :   self.__getNodeType (nextNode)
+            'nextNodeType'      :   self.__getNodeType (nextNode),
         }
 
-    def __removeDuplicateNextNode (self, currentNode, nextNodeType):
+    def __removeDuplicateNextNode (self, currentNode, nextNode):
         # replace the children of the current node with the next node and all of its children 
-        currentNode['children'] = nextNodeType['nodeChildren']
         currentNodeType     =   self.__getNodeType (currentNode)
-        nextNodeType        =   self.__getNodeType (currentNode['children'])
+        nextNodeType        =   self.__getNodeType (nextNode)
+
+        currentNode['children'] = nextNodeType['nodeChildren']
 
         if self.debug and self.debugLevel > 2:
             print('-----DUPLICATE CURRENT AND NEXT NODE-------')
@@ -613,7 +674,7 @@ class SQLQueryTreeOptimizer:
             'currentNodeType'   :   currentNodeType,
             'nextNodeType'      :   nextNodeType
         }
-
+    
     def __removeSubsequentProjection (self, currentNode, nextNode,  nextNextNode):
         # replace the children of the current node with the next node and all of its children
         if not nextNextNode:
@@ -626,7 +687,7 @@ class SQLQueryTreeOptimizer:
                 currentNode['children'] =   nextNode
 
         if self.debug and self.debugLevel > 2:
-            print('-----[Remove subsequent __π__]-------')
+            print('-----[Remove subsequent projection(__π__)]-------')
             print(currentNode)
             print('--------------------------')
 
