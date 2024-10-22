@@ -659,28 +659,32 @@ class SQLQueryTreeOptimizer:
 
                         if self.debug and self.debugLevel > 2:
                             print('\r\n--parentNode--', p)
+                            print('\r\n--lastChildren--', lastChildren)
                             print('\r\n--lastNode--', lastChildren[c])
+                            print('\r\n--currentNode--', currentNode)
                         
-                        # if the parentNode is None, the parent is a cross join (__r__)
+                        # if the parentNode is None, the parent is probably a cross join (__r__)
                         # '__x__' : [{'__r__ : ..} ...]
                         if p == None:
-                            # push to current node to cross join
-                            parsedNode = self.__pushSelectionToJoin (currentNode, lastChildren)
+                            # ensure that it contains a selection
+                            if '__Ω__' in currentNode:
+                                # push to current node to cross join
+                                parsedNode = self.__pushSelectionToJoin (currentNode, lastChildren)
 
-                            # update the current node if something has been moved
-                            if not originalColumnCount == len(parsedNode['undistributedColumns']):
-                                # replace current node if all has been pushed down
-                                if len(parsedNode['undistributedColumns']) < 1:
-                                    currentNode =   nextNode
-                                    nextNode    =   currentNode['children']
-                                else:
-                                    # update the current node with the remaining selections
-                                    currentNode['__Ω__']        =   parsedNode['undistributedColumns']
-                                    currentNode['operators']    =   parsedNode['operators']
-                                    nextNode                    =   currentNode['children']
+                                # update the current node if something has been moved
+                                if not originalColumnCount == len(parsedNode['undistributedColumns']):
+                                    # replace current node if all has been pushed down
+                                    if len(parsedNode['undistributedColumns']) < 1:
+                                        currentNode =   nextNode
+                                        nextNode    =   currentNode['children']
+                                    else:
+                                        # update the current node with the remaining selections
+                                        currentNode['__Ω__']        =   parsedNode['undistributedColumns']
+                                        currentNode['operators']    =   parsedNode['operators']
+                                        nextNode                    =   currentNode['children']
 
-                                    if self.debug and self.debugLevel > 2:
-                                        print('---parsedNode undistributedColumns', parsedNode['undistributedColumns'])
+                                        if self.debug and self.debugLevel > 2:
+                                            print('---parsedNode undistributedColumns', parsedNode['undistributedColumns'])
                                         
                         # proceed if the last child's parent is the same with the last node's parent
                         # this ensures that we are manipulating the right branch of the query tree                
@@ -704,7 +708,13 @@ class SQLQueryTreeOptimizer:
 
             if self.debug and self.debugLevel > 2:    
                 print('\r\n--current--', currentNode)
-                print('\r\n----nextNode', nextNode['children'])
+                if not nextNode == None:
+                    if 'children' in nextNode:
+                        print('\r\n----nextNode', nextNode['children'])
+                    else:
+                        print('\r\n----nextNode No children')
+                else:
+                    print('\r\n----nextNode is None')
                 print('--und', undistributedColumns)
 
              # if there are changes on the current selection list
@@ -742,7 +752,7 @@ class SQLQueryTreeOptimizer:
             'nextNodeType'      :   nextNodeType
         }
     
-    def __removeSubsequentProjection (self, currentNode, nextNode,  nextNextNode):
+    def __removeSubsequentProjection (self, currentNode, nextNode,  nextNextNode = None):
         # replace the children of the current node with the next node and all of its children
         if not nextNextNode:
             if 'children' in nextNode:
