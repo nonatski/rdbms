@@ -42,7 +42,7 @@ if __name__ == '__main__':
         for tree in transformedTrees["trees"]:
 
             planner = SQLQueryPlan (tree)
-            queryPlan = planner.create()
+            queryPlan = planner.setDebug(False).create()
             generatedQueryPlans.append(queryPlan)
 
     # print generated queryplans
