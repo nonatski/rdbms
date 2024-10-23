@@ -9,6 +9,7 @@ class SchemaGenerator :
     self.name = ""
     self.tables = {}
 
+
     if "name" in kwargs:
       self.name = kwargs["name"]
     
@@ -19,6 +20,31 @@ class SchemaGenerator :
     if not name in self.tables:
       self.tables[name] = {}
       self.tables[name]['columns'] = {}
+      self.tables[name]['indexes'] = {}
+      self.tables[name]['properties'] = {
+        'auto_increment'  : 0,
+        'rows'  : 0
+      }
+    
+    return self
+  
+  def addIndex (self, name, indexName, choice, column, cardinality = 0):
+    # create new index
+    index = {
+      'name'        : indexName,
+      'type'        : 'btree',
+      'choice'      : choice,
+      'column'      : column,
+      'cardinality' : cardinality,  
+    }
+
+    self.tables[name]['indexes'][indexName] = index
+
+    return self
+  
+  def updateCardinality (self, name, cardinalityName, cardinality):
+    if self.tables[name]['indexes'] in cardinalityName:
+      self.tables[name]['indexes'][cardinalityName]  = cardinality
     
     return self
 
