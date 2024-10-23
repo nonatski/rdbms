@@ -25,7 +25,7 @@ class Students (SchemaGenerator):
     ])
     
     # add primary key
-    self.addIndex ('student_info', 'PRIMARY_KEY', 'PRIMARY_KEY' 'id')
+    self.addIndex ('student_info', 'PRIMARY_KEY', 'PRIMARY_KEY', 'id')
 
     # student enrollment
     self.addTable ('student_enrollment')
