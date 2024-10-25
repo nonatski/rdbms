@@ -4,7 +4,7 @@ This **Basic Relational Database Management System** will support data managemen
 
 
 ## Parser (Antlr4)
-![parse tree](./src/assets/img/sql_parse_tree.png)
+![parse tree](./src/docs/assets/img/sql_parse_tree.png)
 ### Building from Source
 ```bash
   antlr4 -Dlanguage=Python3 ./src/parser/SQL.g4
@@ -28,4 +28,4 @@ This **Basic Relational Database Management System** will support data managemen
   python src/parser/tests/annotator.py "SELECT * FROM (SELECT student_info.name, student_enrollment.name FROM student_info, student_enrollment WHERE student_info.name='test' OR student_info.name='a') WHERE student_enrollment.name = 'test';"
 ```
 
-![parse tree](./src/assets/img/annotations.png)
+![parse tree](./src/docs/assets/img/annotations.png)

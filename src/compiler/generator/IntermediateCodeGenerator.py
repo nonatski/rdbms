@@ -209,15 +209,19 @@ class IntermediateCodeGenerator:
                     
                     # add to list of conditions
                     conditions.append(f"{col}{op}{val}")
-                
-                if len(whereClause['logic_list']) >= 1:
-                    if whereClause['logic_list'][x]:
-                        for logicName in whereClause['logic_list'][x]:
-                            condition_operators.append(f"{whereClause['logic_list'][x][logicName]['name']}")
-                
                     
                 # count condtion at the end
                 x = x + 1
+            
+            if len(whereClause['logic_list']) >= 1:
+                for x in whereClause['logic_list']:
+                    for logicName in x:
+                        condition_operators.append(f"{x[logicName]['name']}")
+        
+        
+        # exclude empty where clause
+        if conditions == None   : return children
+        if len(conditions) < 1  : return children
 
         return {'__Ω__'  : conditions, 'operators': condition_operators, 'children' : children}
 
@@ -237,7 +241,7 @@ class IntermediateCodeGenerator:
         return {'__r__'  : tables, 'children' : None}
     
     def __crossJoin (self, table_list):
-        return { '__x__' : table_list }
+        return { '__x__' : table_list, 'children' : None }
 
     def __union (self, table_list, value_list = []):
         return { '__u__' : table_list, '__t__' : value_list }
