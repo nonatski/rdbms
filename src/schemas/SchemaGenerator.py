@@ -40,11 +40,18 @@ class SchemaGenerator :
 
     self.tables[name]['indexes'][indexName] = index
 
+    # update the last id of primary key
+    if indexName == 'PRIMARY_KEY': self.tables[name]['properties']['auto_increment'] = cardinality
     return self
   
   def updateCardinality (self, name, cardinalityName, cardinality):
     if self.tables[name]['indexes'] in cardinalityName:
       self.tables[name]['indexes'][cardinalityName]  = cardinality
+    
+    return self
+  
+  def updateRowCount (self, name, cardinality):
+    self.tables[name]['properties']['rows']  = cardinality
     
     return self
 
@@ -84,6 +91,10 @@ class SchemaGenerator :
     if columnName in self.tables[tableName]['columns']:
       return self.tables[tableName]['columns'][columnName]
     return None
+  
+  def getProperties (self, tableName):
+    if tableName in self.tables:
+      return self.tables[tableName]['properties']
   
   def isTableExists (self, tableName):
     if tableName in self.tables:
