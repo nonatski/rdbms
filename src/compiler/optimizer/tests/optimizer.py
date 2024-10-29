@@ -1,7 +1,6 @@
 import antlr4
 import sys
 import os
-import pprint
 from antlr4 import *
 
 dir_path = os.path.dirname(os.path.realpath(__file__))
@@ -15,7 +14,7 @@ sys.path.append(os.path.abspath(os.path.join(dir_path, os.pardir)))
 
 from compiler.analyzer.SQLAnnotate import SQLAnnotate
 from compiler.generator.IntermediateCodeGenerator import IntermediateCodeGenerator
-from compiler.optimizer.SQLQueryTreeTransformer import SQLQueryTreeTransformer
+from compiler.optimizer.SQLQueryTreeOptimizer import SQLQueryTreeOptimizer
 
 if __name__ == '__main__':
     inputStream = antlr4.InputStream(sys.argv[1])
@@ -24,10 +23,9 @@ if __name__ == '__main__':
     annotations = sqlAnnotate.getAnnotations()
 
     code = IntermediateCodeGenerator (annotations)
-    queryTree = code.generate().reverse().getResults()
+    queryTree = code.generate().getResults()
 
-    # feed the query plan to optimer to generate possible queries
-    # NOTE: the current transformer do nothing as of the moment
-    queryTreeTransformer = SQLQueryTreeTransformer (queryTree)
-    transformedTree = queryTreeTransformer.transform ()
+    # feed the query tree to optimer to generate optimized trees
+    queryTreeTransformer = SQLQueryTreeOptimizer (queryTree)
+    transformedTree = queryTreeTransformer.setDebug(False).setDebugLevel(0).transform ()
     print(transformedTree)

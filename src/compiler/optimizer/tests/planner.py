@@ -15,8 +15,9 @@ sys.path.append(os.path.abspath(os.path.join(dir_path, os.pardir)))
 
 from compiler.analyzer.SQLAnnotate import SQLAnnotate
 from compiler.generator.IntermediateCodeGenerator import IntermediateCodeGenerator
-from compiler.optimizer.SQLQueryTreeTransformer import SQLQueryTreeTransformer
+from compiler.optimizer.SQLQueryTreeOptimizer import SQLQueryTreeOptimizer
 from compiler.optimizer.SQLQueryPlan import SQLQueryPlan
+from compiler.optimizer.SQLQueryCost import SQLQueryCost
 
 if __name__ == '__main__':
     inputStream = antlr4.InputStream(sys.argv[1])
@@ -25,21 +26,40 @@ if __name__ == '__main__':
     annotations = sqlAnnotate.getAnnotations()
 
     code = IntermediateCodeGenerator (annotations)
-    queryTree = code.generate().reverse().getResults()
+    queryTree = code.generate().getResults()
+
+    print('\r\n-->-------[ORIGINAL QUERY TREES]------')
+    print (queryTree)
+    print('-->-----------------------------------\r\n')
 
     # feed the query plan to optimer to generate possible queries
     # NOTE: the current transformer do nothing as of the moment
-    queryTreeTransformer = SQLQueryTreeTransformer (queryTree)
+    queryTreeTransformer = SQLQueryTreeOptimizer (queryTree)
     transformedTrees = queryTreeTransformer.transform ()
 
     generatedQueryPlans = []
+
+    print('\r\n-->-------[OPTIMIZED TREES]------')
+    print (transformedTrees)
+    print('-->------------------------------\r\n')
 
     if "trees" in transformedTrees:
         for tree in transformedTrees["trees"]:
 
             planner = SQLQueryPlan (tree)
-            queryPlan = planner.create()
+            queryPlan = planner.setDebug(False).create()
             generatedQueryPlans.append(queryPlan)
-
+    
     # print generated queryplans
-    pprint.PrettyPrinter(indent=1).pprint(generatedQueryPlans)
+    # pprint.PrettyPrinter(indent=1).pprint(generatedQueryPlans)
+
+    queryPlans  =    []
+    # get estimate
+    for plan in generatedQueryPlans:
+        queryCostEstimator  =   SQLQueryCost (plan, schema = Students).setDebug(False)
+        queryCost   =   queryCostEstimator.estimate ()
+        queryPlans.append (queryCost)
+
+    print('\r\n-->-------[QUERY PLANS]------')
+    print(queryPlans)
+    print('-->------------------------------\r\n')
