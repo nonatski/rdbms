@@ -199,16 +199,37 @@ class SQLVisitor(ParseTreeVisitor):
                 where_list_nodes.append(self.visit(where_clause))
         
         # check if column exists in table
+        existsInTables = []
         for where_list in where_list_nodes:
             for condition_list in where_list["condition_list"]:
                 for expression_list in condition_list["expression_list"]:
-                    for tl in table_list_name:
-                        for name in expression_list['column']:
-                            if self.schema.isColumnExists (tl, name):
-                                expression_list['column'][name]["error"] = None
-                                expression_list['column'][name]["valid"] = True
-                        
-        
+                    for name in expression_list['column']:
+                        for tl in table_list_name:
+
+                            # compare where clause to [name] with columns:[table.name, table.age]
+                            if expression_list['column'][name]['type'] == 'table':
+                                tableColumn = expression_list['column'][name]['name'].split('.')
+
+                                if len (tableColumn) >=2:
+                                    if self.schema.isColumnExists (tl, tableColumn[1]):
+                                        expression_list['column'][name]["error"] = None
+                                        expression_list['column'][name]["valid"] = True
+                            else:
+                                if self.schema.isColumnExists (tl, name):
+                                    # this ensures that the column name in WHERE clause will not be ambigous
+                                    if name in existsInTables:
+                                        expression_list['column'][name]["error"] = f"Column [{name}] is ambigous"
+                                        expression_list['column'][name]["valid"] = False
+                                    else:
+                                        expression_list['column'][name]["error"] = None
+                                        expression_list['column'][name]["valid"] = True
+                                        existsInTables.append(name)
+
+                                        #convert to table type
+                                        expression_list['column'][name]['name'] =   f"{tl}.{name}"
+                                        expression_list['column'][name]['type'] =   "table"
+                                        expression_list['column'][name]['tableName']    =   tl
+                                        expression_list['column'][name]['columnName']   =   name
         # get subqueries
         select_statements_nodes = ctx.select_statement()
         for select_statement in select_statements_nodes:
@@ -293,54 +314,62 @@ class SQLVisitor(ParseTreeVisitor):
                             col[name]["error"] = f"Column [{col[name]['name']}] is ambigous"
                             col[name]["valid"] = False
 
-        # verify clause if column exists
-        for where_nodes in where_list_nodes:
-            for condition_list in where_nodes['condition_list']:
-                for expression in condition_list['expression_list']:
-                    for expressionName in expression['column']:
-                        existsInTables = []
-                        
-                        # read all columns
-                        for col in column_list_nodes:
-                            for name in col:
+        if len(select_list_nodes) > 0:
+            # verify clause if column exists
+            for where_nodes in where_list_nodes:
+                for condition_list in where_nodes['condition_list']:
+                    for expression in condition_list['expression_list']:
+                        for expressionName in expression['column']:
+                            existsInColumns = []
+                            # read all columns and compare to conditions
+                            for col in column_list_nodes:
+                                for name in col:
 
-                                # for an expression of col = value
-                                # ensure that it will match all the columns in the list 
-                                # example: name in [table1.name, table2.name]
-                                if expression['column'][expressionName]['type'] == 'column':
-                                    if col[name]['type'] == 'table':
-                                        tableColumn = col[name]['name'].split('.')
+                                    # for an expression of col = value
+                                    # ensure that it will match all the columns in the list 
+                                    # example: name in [table1.name, table2.name]
+                                    if expression['column'][expressionName]['type'] == 'column':
+                                        # compare where clause to [name] with columns:[table.name, table.age]
+                                        if col[name]['type'] == 'table':
+                                            tableColumn = col[name]['name'].split('.')
 
-                                        if len (tableColumn) >=2:
-                                            if expression['column'][expressionName]['name'] == tableColumn[1]:
-                                                # put it the the list of matched column
-                                                existsInTables.append(col[name]['name'])
+                                            if len (tableColumn) >=2:
+                                                if expression['column'][expressionName]['name'] == tableColumn[1]:
+                                                    # put it the the list of matched column
+                                                    existsInColumns.append(col[name]['name'])
+                                                    #convert where clause column to table type
+                                                    expression['column'][expressionName]['name']         =   f"{tableColumn[0]}.{tableColumn[1]}"
+                                                    expression['column'][expressionName]['type']         =   "table"
+                                                    expression['column'][expressionName]['tableName']    =   tableColumn[0]
+                                                    expression['column'][expressionName]['columnName']   =   tableColumn[1]
+                                        else:
+                                            # if column is not a table, match the whole name
+                                            if col[name]['name'] == expression['column'][expressionName]['name']:
+                                                existsInColumns.append(col[name]['name'])
+                                        
                                     else:
-                                        # if column is not a table, match the whole name
+                                        # for wehere clause with table.column format
+                                        # where student_info.name='test'
                                         if col[name]['name'] == expression['column'][expressionName]['name']:
-                                            existsInTables.append(col[name]['name'])
-                                else:
-                                    # for wehere clause with table.column format
-                                    # where student_info.name='test'
-                                    if col[name]['name'] == expression['column'][expressionName]['name']:
-                                        existsInTables.append(col[name]['name'])
-                                    
+                                            existsInColumns.append(col[name]['name'])
+                                        
 
-                        
-                        # this ensure that column will not be ambigous
-                        # columnName = name
-                        # ['student_enrollment.name', 'student_info.name']    
-                        if len(existsInTables) == 0 :
-                            expression['column'][expressionName]["error"] = f"Column name [{expressionName}] does not exist"
-                            expression['column'][expressionName]["valid"] = False
-
-                        elif len(existsInTables) == 1 :
-                            expression['column'][expressionName]["error"] = None
-                            expression['column'][expressionName]["valid"] = True
-                        else:
-                            expression['column'][expressionName]["error"] = f"Column name [{expressionName}] is ambigous"
-                            expression['column'][expressionName]["valid"] = False
                             
+                            # this ensure that column will not be ambigous
+                            # columnName = name
+                            # ['student_enrollment.name', 'student_info.name']    
+                            if len(existsInColumns) == 0 :
+                                expression['column'][expressionName]["error"] = f"Column name [{expressionName}] does not exist"
+                                expression['column'][expressionName]["valid"] = False
+
+                            elif len(existsInColumns) == 1 :
+                                
+                                expression['column'][expressionName]["error"] = None
+                                expression['column'][expressionName]["valid"] = True
+                            else:
+                                expression['column'][expressionName]["error"] = f"Column name [{expressionName}] is ambigous"
+                                expression['column'][expressionName]["valid"] = False
+                                
 
         # return data
         data = {
@@ -651,15 +680,17 @@ class SQLVisitor(ParseTreeVisitor):
         condition_list_nodes = []
         condition_logic_nodes = []
 
-        for cond in ctx.getChildren():
-            if not cond.getChild(1) == None:
-                condition_logic_nodes.append({
-                    cond.getChild(1).getText(): { 
-                        'name'  :   cond.getChild(1).getText(),
-                        'valid' :   True,
-                        'type'  :   'logic'
-                    }
-                })
+        for c in ctx.getChildren():
+            if (str(type(c)).startswith("<class")):
+                for x in range(c.getChildCount()):
+                    if (c.getChild(x).getText().lower() == 'and') or (c.getChild(x).getText().lower() == 'or'):
+                        condition_logic_nodes.append({
+                            c.getChild(x).getText().upper(): { 
+                                'name'  :   c.getChild(x).getText().upper(),
+                                'valid' :   True,
+                                'type'  :   'logic'
+                            }
+                       })
 
         if isinstance (condition_list, list):
             for conditions in condition_list:
